@@ -139,12 +139,13 @@ void processContours(Mat &frame)
     for( int i = 0; i< contours.size(); i++ )
     {
         /// Approximate contour to find border count
-        double length = arcLength(contours[i], true);
-        vector<Point> approx;
-        approxPolyDP(contours[i], approx, 0.02*length, true);
+        double area;
+        int sides;
+        bool isClosed;
+        Shape::approximateContour(contours[i], area, sides, isClosed);
         //contours[i] = approx;
 
-        if (contourArea(approx) > minimal_area && isContourConvex(approx) && approx.size() == approx_size) {
+        if (area > minimal_area && isClosed && sides == approx_size) {
 
             if (shapes.size() == 0) {
                 Shape temp(contours[i]);

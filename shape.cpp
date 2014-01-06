@@ -49,3 +49,17 @@ void Shape::mergeContours(std::vector<cv::Point> &contour)
 
     shapeChildrenCount += 1;
 }
+
+void Shape::approximateContour(std::vector<cv::Point> &contour, double &area, int &sides, bool &isClosed)
+{
+    double length = arcLength(contour, true);
+    double epsilon = 0.02*length;
+    std::vector<cv::Point> approx;
+    cv::approxPolyDP(contour, approx, epsilon, true);
+
+    area = contourArea(approx);
+
+    isClosed = isContourConvex(approx);
+
+    sides = approx.size();
+}

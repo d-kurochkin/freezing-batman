@@ -27,6 +27,7 @@ class Shape
         Shape(std::vector<cv::Point> &contour);
         bool centerIsInside(std::vector<cv::Point> &contour);
         void mergeContours(std::vector<cv::Point> &contour);
+        static void approximateContour(std::vector<cv::Point> &contour, double &area, int &sides, bool &isClosed);
 
 };
 
