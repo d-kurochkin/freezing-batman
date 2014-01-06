@@ -25,7 +25,12 @@ bool Shape::centerIsInside(std::vector<cv::Point> &contour)
     double distance;
     distance = cv::pointPolygonTest(shapeContour, center, false);
 
-    if (distance >= 0) {
+    double eucliadianDistance = 0;
+    cv::Point diff = shapeCenter - center;
+    eucliadianDistance = cv::sqrt(diff.x*diff.x + diff.y*diff.y);
+    qDebug() << "eucliadianDistance = " << eucliadianDistance;
+
+    if (distance >= 0 && eucliadianDistance < 50) {
         fl = true;
     }
 
