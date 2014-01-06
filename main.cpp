@@ -5,6 +5,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
+#include "shape.h"
 
 using namespace cv;
 using namespace std;
@@ -41,8 +42,8 @@ int main()
     assert(capture);
 
     /// Logitech Quickcam Sphere AF
-//        cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 1600);
-//        cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 1200);
+    //cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 1600);
+    //cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 1200);
 
 
     // узнаем ширину и высоту кадра
@@ -50,19 +51,19 @@ int main()
     double height = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT);
     qDebug("[i] %.0f x %.0f\n", width, height);
 
-
-    cvNamedWindow("capture", CV_WINDOW_AUTOSIZE);
-    cvNamedWindow("result", CV_WINDOW_AUTOSIZE);
+    cvNamedWindow("capture", CV_WINDOW_KEEPRATIO);
+    cvNamedWindow("result", CV_WINDOW_KEEPRATIO);
+    //resizeWindow("capture", 1024, 768);
+    //resizeWindow("result", 1024, 768);
 
     qDebug("[i] press Enter for capture image and Esc for quit!\n\n");
-
-
 
 
 //    createTrackbar("Erosion:", "result", &erosion_size, 255);
     createTrackbar("", "result", &approx_size, 20);
     waitKey(1000);
 
+    /// Основной цикл программы
     while(true){
         ///начало отсчета времени
         double t = (double)getTickCount();
@@ -84,18 +85,19 @@ int main()
         t = ((double)getTickCount() - t)/getTickFrequency();
         qDebug() << "Times passed in seconds: " << t;
 
-
-        // ожидаем нажатия клавишь
+        // ожидаем нажатия клавиш
         char c = waitKey(33);
-        if (c == 27) { // нажата ESC
-                break;
+        if (c == 27) {
+            // нажата ESC
+            break;
         }
         else if(c == 13) { // Enter
-                // сохраняем кадр в файл
-                sprintf(filename, "Image%d.jpg", counter);
-                qDebug("[i] capture... %s\n", filename);
-                imwrite(filename, frame);
-                counter++;
+            /*@todo Добавить сохранение развернутых файлов (оригинал, обработанное, результат контурного анализа)*/
+            // сохраняем кадр в файл
+            sprintf(filename, "Image%d.jpg", counter);
+            qDebug("[i] capture... %s\n", filename);
+            imwrite(filename, frame);
+            counter++;
         }
     }
     // освобождаем ресурсы
@@ -128,10 +130,11 @@ void processContours(Mat &frame)
     /// Find contours
     findContours(frame, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
 
-    //Mat drawing = Mat::zeros( frame.size(), CV_8UC3 );
+
     Mat drawing = src.clone();
 
-    int contours_count = 0;
+    vector<Shape> shapes;
+
     for( int i = 0; i< contours.size(); i++ )
     {
 
@@ -141,21 +144,40 @@ void processContours(Mat &frame)
 //                contours[i] = approx;
 
         if (contourArea(approx) > minimal_area && isContourConvex(approx) && approx.size() == approx_size) {
-            contours_count += 1;
+            if (shapes.size()) {
+                Shape temp(contours[i]);
+                shapes.push_back(temp);
+            } else {
+                bool isAdded = false;
+                //проверяем относится ли контур к какой-либо фигуре
+                for(int i=0; i<shapes.size(); ++i) {
+                    if (shapes[i].centerIsInside(contours[i])) {
+                        shapes[i].mergeContours(contours[i]);
+                        isAdded = true;
+                        break;
+                    }
+                }
 
-            Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-            drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, Point() );
+                if (!isAdded) {
+                    Shape temp(contours[i]);
+                    shapes.push_back(temp);
+                }
 
-            /// Draw center of contour
-            Point2f center;
-            float radius;
-            minEnclosingCircle(approx, center, radius );
-            circle( drawing, center, 1, color);
+            }
+
+//            Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+//            drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, Point() );
+
+//            /// Draw center of contour
+//            Point2f center;
+//            float radius;
+//            minEnclosingCircle(approx, center, radius );
+//            circle( drawing, center, 1, color);
 
         }
     }
 
     /// Show in a window
     imshow( "result", drawing );
-    qDebug() << "Contours count " << contours_count;
+    qDebug() << "Contours count " << shapes.size();
 }

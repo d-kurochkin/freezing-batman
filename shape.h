@@ -24,7 +24,7 @@ class Shape
         float shapeArea = 0;
         int shapeChildrenCount = 0;
     public:
-        Shape();
+        Shape(std::vector<cv::Point> &contour);
         bool centerIsInside(std::vector<cv::Point> &contour);
         void mergeContours(std::vector<cv::Point> &contour);
 
