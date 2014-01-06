@@ -38,12 +38,12 @@ void processContours(Mat &frame);
 int main()
 {
 
-    CvCapture* capture = cvCreateCameraCapture(1); //cvCaptureFromCAM( 0 );
+    CvCapture* capture = cvCreateCameraCapture(0); //cvCaptureFromCAM( 0 );
     assert(capture);
 
     /// Logitech Quickcam Sphere AF
-    //cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 1600);
-    //cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 1200);
+    cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 1600);
+    cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 1200);
 
 
     // узнаем ширину и высоту кадра
@@ -51,8 +51,8 @@ int main()
     double height = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT);
     qDebug("[i] %.0f x %.0f\n", width, height);
 
-    cvNamedWindow("capture", CV_WINDOW_KEEPRATIO);
-    cvNamedWindow("result", CV_WINDOW_KEEPRATIO);
+    cvNamedWindow("capture", CV_WINDOW_AUTOSIZE);
+    cvNamedWindow("result", CV_WINDOW_AUTOSIZE);
     //resizeWindow("capture", 1024, 768);
     //resizeWindow("result", 1024, 768);
 
@@ -102,14 +102,17 @@ int main()
     }
     // освобождаем ресурсы
     cvReleaseCapture( &capture );
-//        cvDestroyWindow("adaptive_threshold_mean");
+//  cvDestroyWindow("adaptive_threshold_mean");
     return 0;
 }
 
 
 void preprocessImage(Mat &frame) {
+
     ///преобразуем в оттенки серого
     cvtColor(frame, frame, CV_RGB2GRAY);
+
+    //equalizeHist(frame, frame);
 
     GaussianBlur(frame, frame, Size( 5, 5 ), 0, 0);
 
@@ -130,29 +133,29 @@ void processContours(Mat &frame)
     /// Find contours
     findContours(frame, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
 
-
-    Mat drawing = src.clone();
-
     vector<Shape> shapes;
 
+    /// Fill shapes vector
     for( int i = 0; i< contours.size(); i++ )
     {
-
+        /// Approximate contour to find border count
         double length = arcLength(contours[i], true);
         vector<Point> approx;
         approxPolyDP(contours[i], approx, 0.02*length, true);
-//                contours[i] = approx;
+        //contours[i] = approx;
 
         if (contourArea(approx) > minimal_area && isContourConvex(approx) && approx.size() == approx_size) {
-            if (shapes.size()) {
+
+            if (shapes.size() == 0) {
                 Shape temp(contours[i]);
                 shapes.push_back(temp);
             } else {
                 bool isAdded = false;
-                //проверяем относится ли контур к какой-либо фигуре
-                for(int i=0; i<shapes.size(); ++i) {
-                    if (shapes[i].centerIsInside(contours[i])) {
-                        shapes[i].mergeContours(contours[i]);
+
+                ///проверяем относится ли контур к какой-либо фигуре, если да, то поглащаем меньшую фигуру большей
+                for(int j=0; j<shapes.size(); ++j) {
+                    if (shapes[j].centerIsInside(contours[i])) {
+                        shapes[j].mergeContours(contours[i]);
                         isAdded = true;
                         break;
                     }
@@ -162,22 +165,28 @@ void processContours(Mat &frame)
                     Shape temp(contours[i]);
                     shapes.push_back(temp);
                 }
-
             }
-
-//            Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-//            drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, Point() );
-
-//            /// Draw center of contour
-//            Point2f center;
-//            float radius;
-//            minEnclosingCircle(approx, center, radius );
-//            circle( drawing, center, 1, color);
-
         }
+    }
+
+    ///Draw shapes
+    Mat drawing = src.clone();
+    vector<vector<Point> > resultContours;
+
+    for (int i=0; i<shapes.size(); ++i) {
+        resultContours.push_back(shapes[i].shapeContour);
+
+        /// Draw contour
+        Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+        drawContours( drawing, resultContours, i, color, 2, 8, hierarchy, 0, Point() );
+
+        /// Draw center of contour
+        Point2f center;
+        float radius;
+        minEnclosingCircle(resultContours[i], center, radius );
+        circle(drawing, center, 3, color, 2);
     }
 
     /// Show in a window
     imshow( "result", drawing );
-    qDebug() << "Contours count " << shapes.size();
 }

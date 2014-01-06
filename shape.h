@@ -20,7 +20,7 @@ class Shape
 {
     public:
         std::vector<cv::Point> shapeContour;
-        cv::Point shapeCenter;
+        cv::Point2f shapeCenter;
         float shapeArea = 0;
         int shapeChildrenCount = 0;
     public:
