@@ -1,7 +1,10 @@
 #ifndef SHAPE_H
 #define SHAPE_H
 
+#include <QDebug>
+
 #include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
 enum {
     SHAPE_NONE      = 0,
@@ -16,14 +19,14 @@ enum {
 class Shape
 {
     public:
-        std::vector<cv::Point> contour;
-        cv::Point center;
-        float area = 0;
-        int childrenCount = 0;
+        std::vector<cv::Point> shapeContour;
+        cv::Point shapeCenter;
+        float shapeArea = 0;
+        int shapeChildrenCount = 0;
     public:
         Shape();
-        bool centerIsInside(const std::vector<cv::Point>);
-        void mergeContours(const std::vector<cv::Point>);
+        bool centerIsInside(std::vector<cv::Point> &contour);
+        void mergeContours(std::vector<cv::Point> &contour);
 
 };
 
