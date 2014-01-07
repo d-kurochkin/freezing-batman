@@ -95,7 +95,7 @@ int Shape::classifyShape(std::vector<cv::Point> &contour)
         } else if (sides == 6|| sides == 7) {
             shapeType = SHAPE_HEXAGON;
 
-        } if (roundness > 0.8 && sides == 8 )
+        } else if (roundness > 0.8 && sides == 8 )
             shapeType = SHAPE_CIRCLE;
     }
 

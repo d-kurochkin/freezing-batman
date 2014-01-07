@@ -1,6 +1,5 @@
 #include <QDebug>
 
-//OpenCV include section
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -12,8 +11,6 @@ using namespace std;
 
 //захватываемый кадр
 Mat frame, src;
-vector<Mat> channels;
-RNG rng(12345);
 
 /// Массив с фигурами
 vector<Shape> shapes;
@@ -32,13 +29,12 @@ void drawContours();
 
 int main()
 {
-
-    CvCapture* capture = cvCreateCameraCapture(1); //cvCaptureFromCAM( 0 );
+    CvCapture* capture = cvCreateCameraCapture(0); //cvCaptureFromCAM( 0 );
     assert(capture);
 
     /// Logitech Quickcam Sphere AF
-    //cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 1280 );
-    //cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 960 );
+    cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 1280 );
+    cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 960 );
 
 
     // узнаем ширину и высоту кадра
@@ -52,7 +48,6 @@ int main()
     //resizeWindow("result", 1024, 768);
 
     qDebug("[i] press Enter for capture image and Esc for quit!\n\n");
-
 
     createTrackbar("Threshold:", "result", &thresh, 255);
     //createTrackbar("", "result", &approx_size, 20);
@@ -95,7 +90,7 @@ int main()
     }
     // освобождаем ресурсы
     cvReleaseCapture( &capture );
-//  cvDestroyWindow("adaptive_threshold_mean");
+
     return 0;
 }
 
@@ -175,14 +170,14 @@ void drawContours() {
         resultContours.push_back(shapes[i].shapeContour);
 
         /// Draw contour
-        Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-        drawContours( drawing, resultContours, i, color, 2, 8, NULL, 0, Point() );
+
+        drawContours( drawing, resultContours, i,  SHAPE_COLORS[shapes[i].shapeType], 2, 8, NULL, 0, Point() );
 
         /// Draw center of contour
         Point2f center;
         float radius;
         minEnclosingCircle(resultContours[i], center, radius );
-        circle(drawing, center, 3, color, 2);
+        circle(drawing, center, 3,  SHAPE_COLORS[shapes[i].shapeType], 2);
     }
 
     /// Show in a window

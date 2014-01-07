@@ -16,6 +16,18 @@ enum {
     SHAPE_MAIN      = 6
 };
 
+/// Define shapes colors
+
+const cv::Scalar SHAPE_COLORS[7] = {
+    cv::Scalar(0, 0, 0),
+    cv::Scalar(28, 232, 0),
+    cv::Scalar(28, 247, 255),
+    cv::Scalar(212, 96, 0),
+    cv::Scalar(28, 0, 255),
+    cv::Scalar(255, 255, 255),
+    cv::Scalar(255, 255, 255)
+};
+
 const int MINIMAL_AREA = 200;
 const double PI = 3.141592653589793238462;
 
