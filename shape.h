@@ -16,6 +16,9 @@ enum {
     SHAPE_MAIN      = 6
 };
 
+const int MINIMAL_AREA = 200;
+const double PI = 3.141592653589793238462;
+
 class Shape
 {
     public:
@@ -23,11 +26,15 @@ class Shape
         cv::Point2f shapeCenter;
         float shapeArea = 0;
         int shapeChildrenCount = 0;
+        int shapeType = SHAPE_NONE;
+
     public:
         Shape(std::vector<cv::Point> &contour);
         bool centerIsInside(std::vector<cv::Point> &contour);
         void mergeContours(std::vector<cv::Point> &contour);
-        static void approximateContour(std::vector<cv::Point> &contour, double &area, int &sides, bool &isClosed);
+
+    public:
+        static int classifyShape(std::vector<cv::Point> &contour);
 
 };
 

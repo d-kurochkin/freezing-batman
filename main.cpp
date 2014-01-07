@@ -15,35 +15,30 @@ Mat frame, src;
 vector<Mat> channels;
 RNG rng(12345);
 
+/// Массив с фигурами
+vector<Shape> shapes;
+
 /// Параметры препроцессинга
 int thresh = 100;
-const int mask = 9;
-int erosion_size = 1;
-int approx_size = 4;
-int approx_error = 0;
-int minimal_area = 100;
-int match_value = 10;
 
 /// Переменные для сохранения файлов
 int counter=0;
 char filename[512];
 
-vector<vector<Point> > contours;
-vector<Vec4i> hierarchy;
-
 
 void preprocessImage(Mat &frame);
 void processContours(Mat &frame);
+void drawContours();
 
 int main()
 {
 
-    CvCapture* capture = cvCreateCameraCapture(0); //cvCaptureFromCAM( 0 );
+    CvCapture* capture = cvCreateCameraCapture(1); //cvCaptureFromCAM( 0 );
     assert(capture);
 
     /// Logitech Quickcam Sphere AF
-    cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 1600);
-    cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 1200);
+    //cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 1280 );
+    //cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 960 );
 
 
     // узнаем ширину и высоту кадра
@@ -59,8 +54,8 @@ int main()
     qDebug("[i] press Enter for capture image and Esc for quit!\n\n");
 
 
-//    createTrackbar("Erosion:", "result", &erosion_size, 255);
-    createTrackbar("", "result", &approx_size, 20);
+    createTrackbar("Threshold:", "result", &thresh, 255);
+    //createTrackbar("", "result", &approx_size, 20);
     waitKey(1000);
 
     /// Основной цикл программы
@@ -71,15 +66,13 @@ int main()
         /// получаем кадр
         frame = cvQueryFrame(capture);
 
-        /// используем существующее изображение
-        //frame = imread("C:\\Development\\Computersehen\\Samples\\GOPR0948.JPG");
-        //resize(frame, frame, Size(), 0.4, 0.4, INTER_CUBIC);
-
         src = frame.clone();
 
         preprocessImage(frame);
 
         processContours(frame);
+
+        drawContours();
 
         /// Calculate time
         t = ((double)getTickCount() - t)/getTickFrequency();
@@ -112,13 +105,13 @@ void preprocessImage(Mat &frame) {
     ///преобразуем в оттенки серого
     cvtColor(frame, frame, CV_RGB2GRAY);
 
-    //equalizeHist(frame, frame);
+    equalizeHist(frame, frame);
 
     GaussianBlur(frame, frame, Size( 5, 5 ), 0, 0);
 
 
     /// Detect edges using canny
-    Canny(frame, frame, thresh, thresh*2, 3 );
+    Canny(frame, frame, thresh, thresh*2, 3);
 
     /// Use adaptive threshold
     //adaptiveThreshold(frame, frame, 255, ADAPTIVE_THRESH_GAUSSIAN_C, CV_THRESH_BINARY, 7, 2);
@@ -130,22 +123,24 @@ void preprocessImage(Mat &frame) {
 
 void processContours(Mat &frame)
 {
+    vector<vector<Point> > contours;
+    vector<Vec4i> hierarchy;
+
     /// Find contours
     findContours(frame, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
 
-    vector<Shape> shapes;
+    /// Очищаем вектор с формами
+    shapes.clear();
 
     /// Fill shapes vector
     for( int i = 0; i< contours.size(); i++ )
     {
         /// Approximate contour to find border count
-        double area;
-        int sides;
-        bool isClosed;
-        Shape::approximateContour(contours[i], area, sides, isClosed);
+        int shapeType = SHAPE_NONE;
+        shapeType = Shape::classifyShape(contours[i]);
         //contours[i] = approx;
 
-        if (area > minimal_area && isClosed && sides == approx_size) {
+        if (shapeType != SHAPE_NONE) {
 
             if (shapes.size() == 0) {
                 Shape temp(contours[i]);
@@ -155,7 +150,7 @@ void processContours(Mat &frame)
 
                 ///проверяем относится ли контур к какой-либо фигуре, если да, то поглащаем меньшую фигуру большей
                 for(int j=0; j<shapes.size(); ++j) {
-                    if (shapes[j].centerIsInside(contours[i])) {
+                    if (shapes[j].shapeType == shapeType && shapes[j].centerIsInside(contours[i])) {
                         shapes[j].mergeContours(contours[i]);
                         isAdded = true;
                         break;
@@ -169,7 +164,9 @@ void processContours(Mat &frame)
             }
         }
     }
+}
 
+void drawContours() {
     ///Draw shapes
     Mat drawing = src.clone();
     vector<vector<Point> > resultContours;
@@ -179,7 +176,7 @@ void processContours(Mat &frame)
 
         /// Draw contour
         Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-        drawContours( drawing, resultContours, i, color, 2, 8, hierarchy, 0, Point() );
+        drawContours( drawing, resultContours, i, color, 2, 8, NULL, 0, Point() );
 
         /// Draw center of contour
         Point2f center;
