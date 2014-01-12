@@ -1,5 +1,14 @@
 #include "shape.h"
 
+double angle_point (point a, point b, point c)
+{
+   double x1 = a.x - b.x, x2 = c.x - b.x;
+   double y1 = a.y - b.y, y2 = c.y - b.y;
+   double d1 = sqrt (x1 * x1 + y1 * y1);
+   double d2 = sqrt (x2 * x2 + y2 * y2);
+   return acos ((x1 * x2 + y1 * y2) / (d1 * d2));
+}
+
 Shape::Shape(std::vector<cv::Point> &contour)
 {
     shapeContour = contour;
@@ -27,7 +36,6 @@ bool Shape::centerIsInside(std::vector<cv::Point> &contour)
     double eucliadianDistance = 0;
     cv::Point diff = shapeCenter - center;
     eucliadianDistance = cv::sqrt(diff.x*diff.x + diff.y*diff.y);
-//    qDebug() << "eucliadianDistance = " << eucliadianDistance;
 
     if (distance >= 0 && eucliadianDistance < 50) {
         fl = true;
@@ -85,7 +93,7 @@ int Shape::classifyShape(std::vector<cv::Point> &contour)
 
     /// Classify shape
     int shapeType = SHAPE_NONE;
-    if (area > MINIMAL_AREA && isClosed && eccentricity < 0.04) {
+    if (area > MINIMAL_AREA && isClosed && eccentricity < 0.03) {
         if (triangularity > 0.85 && (sides >= 3 && sides <= 6)) {
             shapeType = SHAPE_TRIANGLE;
 

@@ -22,7 +22,6 @@ int thresh = 100;
 int counter=0;
 char filename[512];
 
-
 void preprocessImage(Mat &frame);
 void processContours(Mat &frame);
 void drawContours();
@@ -33,9 +32,8 @@ int main()
     assert(capture);
 
     /// Logitech Quickcam Sphere AF
-    cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 1280 );
-    cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 960 );
-
+//    cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 1280 );
+//    cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 960 );
 
     // узнаем ширину и высоту кадра
     double width = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH);
@@ -55,11 +53,13 @@ int main()
 
     /// Основной цикл программы
     while(true){
+        /// получаем кадр
+        frame = cvQueryFrame(capture);
+
         ///начало отсчета времени
         double t = (double)getTickCount();
 
-        /// получаем кадр
-        frame = cvQueryFrame(capture);
+//        frame = imread("C:\\Development\\FlyCam_Plattform_10m.png");
 
         src = frame.clone();
 
@@ -97,14 +97,24 @@ int main()
 
 void preprocessImage(Mat &frame) {
 
+    Mat hsv, yuv;
+    vector<Mat> channels_hsv, channels_yuv;
+
     ///преобразуем в оттенки серого
-    cvtColor(frame, frame, CV_RGB2GRAY);
+    cvtColor(frame, hsv, CV_RGB2HSV);
+    cvtColor(frame, yuv, CV_RGB2YUV);
+    split(hsv, channels_hsv);
+    split(yuv, channels_yuv);
 
+//    Mat result;
+    multiply(channels_hsv[2], channels_yuv[0], frame, 1.0/128.0);
+    /// (S+V)/2 * Y / 160
+
+
+    /// Выравнивание гистограммы
     equalizeHist(frame, frame);
-
+    /// Сглаживание изображения
     GaussianBlur(frame, frame, Size( 5, 5 ), 0, 0);
-
-
     /// Detect edges using canny
     Canny(frame, frame, thresh, thresh*2, 3);
 
