@@ -107,10 +107,6 @@ void preprocessImage(Mat &frame) {
     split(hsv, channels_hsv);
     split(yuv, channels_yuv);
 
-//    Mat result;
-//    multiply(channels_hsv[2], channels_yuv[0], frame, 1.0/128.0);
-    /// (S+V)/2 * Y / 160
-    /// void addWeighted(InputArray src1, double alpha, InputArray src2, double beta, double gamma, OutputArray dst, int dtype=-1)
     Mat temp;
     addWeighted(channels_hsv[1], 0.5, channels_hsv[2], 0.5, 0, temp);
     multiply(temp, channels_yuv[0], frame, 1.0/color_coeff);
@@ -122,10 +118,6 @@ void preprocessImage(Mat &frame) {
     GaussianBlur(frame, frame, Size( 5, 5 ), 0, 0);
     /// Detect edges using canny
     Canny(frame, frame, thresh, thresh*2, 3);
-
-    /// Use adaptive threshold
-    //adaptiveThreshold(frame, frame, 255, ADAPTIVE_THRESH_GAUSSIAN_C, CV_THRESH_BINARY, 7, 2);
-    //medianBlur(frame, frame, 5);
 
     // Show preprocessed image
     imshow("capture", frame);
