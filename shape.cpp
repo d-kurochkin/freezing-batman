@@ -62,18 +62,20 @@ void Shape::mergeContours(std::vector<cv::Point> &contour)
     shapeChildrenCount += 1;
 }
 
-int Shape::classifyShape(std::vector<cv::Point> &contour)
+void Shape::calculateFeatures(std::vector<cv::Point> &contour, QHash<QString, QVariant> &features)
 {
+
     /// Approximate contour
     double perimeter = arcLength(contour, true);
     double epsilon = 0.02*perimeter;
     std::vector<cv::Point> approx;
     cv::approxPolyDP(contour, approx, epsilon, true);
 
+    bool isClosed = cv::isContourConvex(approx);
+
     /// Calculate basic features
     double area = cv::contourArea(approx);
-    bool isClosed = cv::isContourConvex(approx);
-    int sides = approx.size();
+    double sides = (double)approx.size();
 
     /// Calculate moments of contour
     cv::Moments curMnts = moments( contour, false );
@@ -89,21 +91,39 @@ int Shape::classifyShape(std::vector<cv::Point> &contour)
         triangularity = 108*affineMomentInvariant;
     } else {
         triangularity = 1/(108*affineMomentInvariant);
-    }
+      }
+
+    features.clear();
+    features.insert("perimeter", perimeter);
+    features.insert("area", area);
+    features.insert("sides", sides);
+    features.insert("roundness", roundness);
+    features.insert("rectangularity", rectangularity);
+    features.insert("eccentricity", eccentricity);
+    features.insert("triangularity", triangularity);
+    features.insert("isClosed", isClosed);
+}
+
+
+
+int Shape::classifyShape(std::vector<cv::Point> &contour)
+{
+    QHash<QString, QVariant> features;
+    calculateFeatures(contour, features);
 
     /// Classify shape
     int shapeType = SHAPE_NONE;
-    if (area > MINIMAL_AREA && isClosed && eccentricity < 0.03) {
-        if (triangularity > 0.85 && (sides >= 3 && sides <= 6)) {
+    if (features["area"] > MINIMAL_AREA && features["isClosed"].toBool() && features["eccentricity"] < 0.03) {
+        if (features["triangularity"] > 0.85 && (features["sides"] >= 3 && features["sides"] <= 6)) {
             shapeType = SHAPE_TRIANGLE;
 
-        } else if (/*(rectangularity > 0.8) &&*/ (sides == 4 || sides == 5) && (triangularity < 0.85)) {
+        } else if (/*(rectangularity > 0.8) &&*/ (features["sides"] == 4 || features["sides"] == 5) && (features["triangularity"] < 0.85)) {
             shapeType = SHAPE_SQUARE;
 
-        } else if (sides == 6|| sides == 7) {
+        } else if (features["sides"] == 6|| features["sides"] == 7) {
             shapeType = SHAPE_HEXAGON;
 
-        } else if (roundness > 0.8 && sides == 8 )
+        } else if (features["roundness"] > 0.8 && features["sides"] == 8 )
             shapeType = SHAPE_CIRCLE;
     }
 

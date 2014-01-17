@@ -2,6 +2,9 @@
 #define SHAPE_H
 
 #include <QDebug>
+#include <QHash>
+#include <QVariant>
+#include <QString>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -46,6 +49,7 @@ class Shape
         void mergeContours(std::vector<cv::Point> &contour);
 
     public:
+        static void calculateFeatures(std::vector<cv::Point> &contour, QHash<QString, QVariant> &features);
         static int classifyShape(std::vector<cv::Point> &contour);
 
 };
