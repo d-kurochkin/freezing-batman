@@ -17,6 +17,7 @@ vector<Shape> shapes;
 
 /// Параметры препроцессинга
 int thresh = 100;
+int color_coeff = 160;
 
 /// Переменные для сохранения файлов
 int counter=0;
@@ -47,8 +48,8 @@ int main()
 
     qDebug("[i] press Enter for capture image and Esc for quit!\n\n");
 
-    createTrackbar("Threshold:", "result", &thresh, 255);
-    //createTrackbar("", "result", &approx_size, 20);
+    createTrackbar("Threshold:", "capture", &thresh, 255);
+    createTrackbar("Color coeff", "capture", &color_coeff, 255);
     waitKey(1000);
 
     /// Основной цикл программы
@@ -107,9 +108,13 @@ void preprocessImage(Mat &frame) {
     split(yuv, channels_yuv);
 
 //    Mat result;
-    multiply(channels_hsv[2], channels_yuv[0], frame, 1.0/128.0);
+//    multiply(channels_hsv[2], channels_yuv[0], frame, 1.0/128.0);
     /// (S+V)/2 * Y / 160
-
+    /// void addWeighted(InputArray src1, double alpha, InputArray src2, double beta, double gamma, OutputArray dst, int dtype=-1)
+    Mat temp;
+    addWeighted(channels_hsv[1], 0.5, channels_hsv[2], 0.5, 0, temp);
+    multiply(temp, channels_yuv[0], frame, 1.0/color_coeff);
+    imshow("convert_color", frame);
 
     /// Выравнивание гистограммы
     equalizeHist(frame, frame);

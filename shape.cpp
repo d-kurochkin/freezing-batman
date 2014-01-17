@@ -1,13 +1,13 @@
 #include "shape.h"
 
-double angle_point (point a, point b, point c)
-{
-   double x1 = a.x - b.x, x2 = c.x - b.x;
-   double y1 = a.y - b.y, y2 = c.y - b.y;
-   double d1 = sqrt (x1 * x1 + y1 * y1);
-   double d2 = sqrt (x2 * x2 + y2 * y2);
-   return acos ((x1 * x2 + y1 * y2) / (d1 * d2));
-}
+//double angle_point (point a, point b, point c)
+//{
+//   double x1 = a.x - b.x, x2 = c.x - b.x;
+//   double y1 = a.y - b.y, y2 = c.y - b.y;
+//   double d1 = sqrt (x1 * x1 + y1 * y1);
+//   double d2 = sqrt (x2 * x2 + y2 * y2);
+//   return acos ((x1 * x2 + y1 * y2) / (d1 * d2));
+//}
 
 Shape::Shape(std::vector<cv::Point> &contour)
 {
