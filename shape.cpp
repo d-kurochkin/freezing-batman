@@ -93,6 +93,8 @@ void Shape::calculateFeatures(std::vector<cv::Point> &contour, QHash<QString, QV
         triangularity = 1/(108*affineMomentInvariant);
       }
 
+
+
     features.clear();
     features.insert("perimeter", perimeter);
     features.insert("area", area);

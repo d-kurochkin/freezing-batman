@@ -14,6 +14,10 @@ Mat frame, src;
 
 /// Массив с фигурами
 vector<Shape> shapes;
+vector<Shape> triangles;
+vector<Shape> squares;
+vector<Shape> hexagons;
+vector<Shape> circles;
 
 /// Параметры препроцессинга
 int thresh = 100;
@@ -25,6 +29,7 @@ char filename[512];
 
 void preprocessImage(Mat &frame);
 void processContours(Mat &frame);
+void processShapes();
 void drawContours();
 
 int main()
@@ -60,14 +65,11 @@ int main()
         ///начало отсчета времени
         double t = (double)getTickCount();
 
-//        frame = imread("C:\\Development\\FlyCam_Plattform_10m.png");
-
         src = frame.clone();
 
         preprocessImage(frame);
-
         processContours(frame);
-
+        processShapes();
         drawContours();
 
         /// Calculate time
@@ -113,7 +115,7 @@ void preprocessImage(Mat &frame) {
     imshow("convert_color", frame);
 
     /// Выравнивание гистограммы
-    equalizeHist(frame, frame);
+    //equalizeHist(frame, frame);
     /// Сглаживание изображения
     GaussianBlur(frame, frame, Size( 5, 5 ), 0, 0);
     /// Detect edges using canny
@@ -122,6 +124,7 @@ void preprocessImage(Mat &frame) {
     // Show preprocessed image
     imshow("capture", frame);
 }
+
 
 void processContours(Mat &frame)
 {
@@ -140,7 +143,7 @@ void processContours(Mat &frame)
         /// Approximate contour to find border count
         int shapeType = SHAPE_NONE;
         shapeType = Shape::classifyShape(contours[i]);
-        //contours[i] = approx;
+
 
         if (shapeType != SHAPE_NONE) {
 
@@ -150,7 +153,7 @@ void processContours(Mat &frame)
             } else {
                 bool isAdded = false;
 
-                ///проверяем относится ли контур к какой-либо фигуре, если да, то поглащаем меньшую фигуру большей
+                ///проверяем относится ли контур к какой-либо фигуре, если да, то поглощаем меньшую фигуру большей
                 for(int j=0; j<shapes.size(); ++j) {
                     if (shapes[j].shapeType == shapeType && shapes[j].centerIsInside(contours[i])) {
                         shapes[j].mergeContours(contours[i]);
@@ -166,8 +169,33 @@ void processContours(Mat &frame)
             }
         }
     }
+}
 
+void processShapes() {
 
+    triangles.clear();
+    squares.clear();
+    hexagons.clear();
+    circles.clear();
+
+    for (int i = 0; i < shapes.size(); ++i) {
+        switch (shapes[i].shapeType) {
+        case SHAPE_TRIANGLE:
+            triangles.push_back(shape);
+            break;
+        case SHAPE_SQUARE:
+            squares.push_back(shape);
+            break;
+        case SHAPE_HEXAGON:
+            hexagons.push_back(shape);
+            break;
+        case SHAPE_CIRCLE:
+            circles.push_back(shape);
+            break;
+        default:
+            break;
+        }
+    }
 }
 
 void drawContours() {
@@ -187,6 +215,19 @@ void drawContours() {
         float radius;
         minEnclosingCircle(resultContours[i], center, radius );
         circle(drawing, center, 3,  SHAPE_COLORS[shapes[i].shapeType], 2);
+
+
+        //дорисовать минимальный описывающий прямоугольник и окружности
+        Scalar color = Scalar(255, 255, 255);
+        RotatedRect minRect = minAreaRect(Mat(resultContours[i]));
+        Point2f rect_points[4]; minRect.points( rect_points );
+
+
+        Size2f size =minRect.size;
+        float max = size.height > size.width ? size.height : size.width;
+
+        radius = max / 0.46;
+        circle(drawing, shapes[i].shapeCenter, radius, color, 2, 8 );
     }
 
     /// Show in a window
