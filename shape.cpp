@@ -22,9 +22,8 @@ Shape::Shape(std::vector<cv::Point> &contour)
     shapeChildrenCount += 1;
 }
 
-bool Shape::centerIsInside(std::vector<cv::Point> &contour)
+bool Shape::centerIsInside(std::vector<cv::Point> &contour, double &eucliadianDistance)
 {
-    bool fl = false;
 
     cv::Point2f center;
     float radius;
@@ -33,15 +32,11 @@ bool Shape::centerIsInside(std::vector<cv::Point> &contour)
     double distance;
     distance = cv::pointPolygonTest(shapeContour, center, false);
 
-    double eucliadianDistance = 0;
+    eucliadianDistance = 0;
     cv::Point diff = shapeCenter - center;
     eucliadianDistance = cv::sqrt(diff.x*diff.x + diff.y*diff.y);
 
-    if (distance >= 0 && eucliadianDistance < 50) {
-        fl = true;
-    }
-
-    return fl;
+    return (distance >= 0);
 }
 
 void Shape::mergeContours(std::vector<cv::Point> &contour)

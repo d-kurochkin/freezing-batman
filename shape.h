@@ -44,8 +44,9 @@ class Shape
         int shapeType = SHAPE_NONE;
 
     public:
+        Shape(){}
         Shape(std::vector<cv::Point> &contour);
-        bool centerIsInside(std::vector<cv::Point> &contour);
+        bool centerIsInside(std::vector<cv::Point> &contour, double &eucliadianDistance);
         void mergeContours(std::vector<cv::Point> &contour);
 
     public:

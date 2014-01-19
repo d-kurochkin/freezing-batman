@@ -19,9 +19,11 @@ vector<Shape> squares;
 vector<Shape> hexagons;
 vector<Shape> circles;
 
+
+
 /// Параметры препроцессинга
-int thresh = 100;
-int color_coeff = 160;
+int thresh = 50;
+int color_coeff = 70;
 
 /// Переменные для сохранения файлов
 int counter=0;
@@ -155,7 +157,10 @@ void processContours(Mat &frame)
 
                 ///проверяем относится ли контур к какой-либо фигуре, если да, то поглощаем меньшую фигуру большей
                 for(int j=0; j<shapes.size(); ++j) {
-                    if (shapes[j].shapeType == shapeType && shapes[j].centerIsInside(contours[i])) {
+                    double eucliadianDistance = 0;
+                    bool isInside = shapes[j].centerIsInside(contours[i], eucliadianDistance);
+
+                    if (shapes[j].shapeType == shapeType && isInside && eucliadianDistance < 100) {
                         shapes[j].mergeContours(contours[i]);
                         isAdded = true;
                         break;
@@ -177,25 +182,54 @@ void processShapes() {
     squares.clear();
     hexagons.clear();
     circles.clear();
-
+    //Помещаем фигуры в соответствующие массивы
     for (int i = 0; i < shapes.size(); ++i) {
         switch (shapes[i].shapeType) {
         case SHAPE_TRIANGLE:
-            triangles.push_back(shape);
+            triangles.push_back(shapes[i]);
             break;
         case SHAPE_SQUARE:
-            squares.push_back(shape);
+            squares.push_back(shapes[i]);
             break;
         case SHAPE_HEXAGON:
-            hexagons.push_back(shape);
+            hexagons.push_back(shapes[i]);
             break;
         case SHAPE_CIRCLE:
-            circles.push_back(shape);
+            circles.push_back(shapes[i]);
             break;
         default:
             break;
         }
     }
+
+    qDebug() << shapes.size() << "\t" << triangles.size() << "\t" << squares.size() << "\t" << hexagons.size() << "\t" << circles.size();
+    shapes.clear();
+
+    //Выполняем поиск платформы по наивному алгоритму
+    Shape platform;
+    Shape center;
+
+    for (int circle_item = 0; circle_item < circles.size(); ++circle_item) {
+        for (int square_item = 0; square_item < squares.size(); ++square_item) {
+            double eucliadianDistance = 0;
+            bool centerIsInside = circles[circle_item].centerIsInside(squares[square_item].shapeContour, eucliadianDistance);
+            double area_ratio = squares[square_item].shapeArea / circles[circle_item].shapeArea;
+
+            if (centerIsInside && eucliadianDistance < 100 && area_ratio > 2.5) {
+                if (squares[square_item].shapeArea > platform.shapeArea && circles[circle_item].shapeArea > center.shapeArea) {
+                    platform = squares[square_item];
+                    center = circles[circle_item];
+                }
+            }
+        }
+    }
+
+    //Добавляем найденные центр и платформу в массив фигур
+    if (platform.shapeArea > 0 && center.shapeArea > 0) {
+        shapes.push_back(platform);
+        shapes.push_back(center);
+    }
+
 }
 
 void drawContours() {
@@ -218,16 +252,16 @@ void drawContours() {
 
 
         //дорисовать минимальный описывающий прямоугольник и окружности
-        Scalar color = Scalar(255, 255, 255);
-        RotatedRect minRect = minAreaRect(Mat(resultContours[i]));
-        Point2f rect_points[4]; minRect.points( rect_points );
+//        Scalar color = Scalar(255, 255, 255);
+//        RotatedRect minRect = minAreaRect(Mat(resultContours[i]));
+//        Point2f rect_points[4]; minRect.points( rect_points );
 
 
-        Size2f size =minRect.size;
-        float max = size.height > size.width ? size.height : size.width;
+//        Size2f size =minRect.size;
+//        float max = size.height > size.width ? size.height : size.width;
 
-        radius = max / 0.46;
-        circle(drawing, shapes[i].shapeCenter, radius, color, 2, 8 );
+//        radius = max / 0.46;
+//        circle(drawing, shapes[i].shapeCenter, radius, color, 2, 8 );
     }
 
     /// Show in a window
