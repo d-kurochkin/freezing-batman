@@ -19,16 +19,20 @@ vector<Shape> squares;
 vector<Shape> hexagons;
 vector<Shape> circles;
 
-
+// Распознанные фигуры
+Shape platformShape;
+Shape centerShape;
 
 /// Параметры препроцессинга
 int thresh = 50;
 int color_coeff = 70;
+int min_eucl_dist = 50;
 
 /// Переменные для сохранения файлов
 int counter=0;
 char filename[512];
 
+void initInterface();
 void preprocessImage(Mat &frame);
 void processContours(Mat &frame);
 void processShapes();
@@ -48,16 +52,7 @@ int main()
     double height = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT);
     qDebug("[i] %.0f x %.0f\n", width, height);
 
-    cvNamedWindow("capture", CV_WINDOW_AUTOSIZE);
-    cvNamedWindow("result", CV_WINDOW_AUTOSIZE);
-    //resizeWindow("capture", 1024, 768);
-    //resizeWindow("result", 1024, 768);
-
-    qDebug("[i] press Enter for capture image and Esc for quit!\n\n");
-
-    createTrackbar("Threshold:", "capture", &thresh, 255);
-    createTrackbar("Color coeff", "capture", &color_coeff, 255);
-    waitKey(1000);
+    initInterface();
 
     /// Основной цикл программы
     while(true){
@@ -99,6 +94,18 @@ int main()
     return 0;
 }
 
+void initInterface() {
+    cvNamedWindow("settings", CV_WINDOW_NORMAL);
+    cvNamedWindow("result", CV_WINDOW_AUTOSIZE);
+    //resizeWindow("capture", 1024, 768);
+    //resizeWindow("result", 1024, 768);
+
+    createTrackbar("Threshold:", "settings", &thresh, 255);
+    createTrackbar("Color coeff", "settings", &color_coeff, 255);
+    createTrackbar("Minimal euclidian distance", "settings", &min_eucl_dist, 150);
+    waitKey(1000);
+
+}
 
 void preprocessImage(Mat &frame) {
 
@@ -114,7 +121,7 @@ void preprocessImage(Mat &frame) {
     Mat temp;
     addWeighted(channels_hsv[1], 0.5, channels_hsv[2], 0.5, 0, temp);
     multiply(temp, channels_yuv[0], frame, 1.0/color_coeff);
-    imshow("convert_color", frame);
+    //imshow("convert_color", frame);
 
     /// Выравнивание гистограммы
     //equalizeHist(frame, frame);
@@ -160,7 +167,7 @@ void processContours(Mat &frame)
                     double eucliadianDistance = 0;
                     bool isInside = shapes[j].centerIsInside(contours[i], eucliadianDistance);
 
-                    if (shapes[j].shapeType == shapeType && isInside && eucliadianDistance < 100) {
+                    if (shapes[j].shapeType == shapeType && isInside && eucliadianDistance < min_eucl_dist) {
                         shapes[j].mergeContours(contours[i]);
                         isAdded = true;
                         break;
@@ -176,12 +183,30 @@ void processContours(Mat &frame)
     }
 }
 
-void processShapes() {
+void pushShape_1(vector<Shape> &items) {
+    for(auto item : items) {
+        double eucliadianDistance = 0;
+        bool centerIsInside = platformShape.centerIsInside(item.shapeContour, eucliadianDistance);
+        double area_ratio = centerShape.shapeArea / item.shapeArea;
 
+        if (centerIsInside && eucliadianDistance > min_eucl_dist && area_ratio < 2 && area_ratio > 0.5) {
+            shapes.push_back(item);
+            break;
+        }
+    }
+}
+
+void processShapes() {
+    //Очистка
     triangles.clear();
     squares.clear();
     hexagons.clear();
     circles.clear();
+
+    centerShape = Shape();
+    platformShape = Shape();
+
+
     //Помещаем фигуры в соответствующие массивы
     for (int i = 0; i < shapes.size(); ++i) {
         switch (shapes[i].shapeType) {
@@ -206,8 +231,7 @@ void processShapes() {
     shapes.clear();
 
     //Выполняем поиск платформы по наивному алгоритму
-    Shape platform;
-    Shape center;
+
 
     for (int circle_item = 0; circle_item < circles.size(); ++circle_item) {
         for (int square_item = 0; square_item < squares.size(); ++square_item) {
@@ -215,19 +239,27 @@ void processShapes() {
             bool centerIsInside = circles[circle_item].centerIsInside(squares[square_item].shapeContour, eucliadianDistance);
             double area_ratio = squares[square_item].shapeArea / circles[circle_item].shapeArea;
 
-            if (centerIsInside && eucliadianDistance < 100 && area_ratio > 2.5) {
-                if (squares[square_item].shapeArea > platform.shapeArea && circles[circle_item].shapeArea > center.shapeArea) {
-                    platform = squares[square_item];
-                    center = circles[circle_item];
+            if (centerIsInside && eucliadianDistance < min_eucl_dist && area_ratio > 2.5) {
+                if (squares[square_item].shapeArea > platformShape.shapeArea && circles[circle_item].shapeArea > centerShape.shapeArea) {
+                    platformShape = squares[square_item];
+                    platformShape.shapeType = SHAPE_PLATFORM;
+
+                    centerShape = circles[circle_item];
+                    centerShape.shapeType = SHAPE_CENTER;
                 }
             }
         }
     }
 
     //Добавляем найденные центр и платформу в массив фигур
-    if (platform.shapeArea > 0 && center.shapeArea > 0) {
-        shapes.push_back(platform);
-        shapes.push_back(center);
+    if (platformShape.shapeArea > 0 && centerShape.shapeArea > 0) {
+        shapes.push_back(platformShape);
+        shapes.push_back(centerShape);
+
+        pushShape_1(triangles);
+        pushShape_1(squares);
+        pushShape_1(hexagons);
+        pushShape_1(circles);
     }
 
 }

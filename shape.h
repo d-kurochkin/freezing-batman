@@ -16,7 +16,7 @@ enum {
     SHAPE_HEXAGON   = 3,
     SHAPE_CIRCLE    = 4,
     SHAPE_CENTER    = 5,
-    SHAPE_MAIN      = 6
+    SHAPE_PLATFORM  = 6
 };
 
 /// Define shapes colors
