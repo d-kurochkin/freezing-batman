@@ -10,7 +10,7 @@ using namespace cv;
 using namespace std;
 
 //захватываемый кадр
-Mat frame, src;
+Mat frame, gray_src, src;
 
 /// Массив с фигурами
 vector<Shape> shapes;
@@ -27,6 +27,8 @@ Shape centerShape;
 int thresh = 50;
 int color_coeff = 70;
 int min_eucl_dist = 50;
+int center_detect_threshold = 100;
+double center_detect_radius = 1.3;
 
 /// Переменные для сохранения файлов
 int counter=0;
@@ -62,7 +64,7 @@ int main()
         ///начало отсчета времени
         double t = (double)getTickCount();
 
-        src = frame.clone();
+
 
         preprocessImage(frame);
         processContours(frame);
@@ -103,6 +105,7 @@ void initInterface() {
     createTrackbar("Threshold:", "settings", &thresh, 255);
     createTrackbar("Color coeff", "settings", &color_coeff, 255);
     createTrackbar("Minimal euclidian distance", "settings", &min_eucl_dist, 150);
+    createTrackbar("Central detect. threshold", "settings", &center_detect_threshold, 150);
     waitKey(1000);
 
 }
@@ -111,6 +114,8 @@ void preprocessImage(Mat &frame) {
 
     Mat hsv, yuv;
     vector<Mat> channels_hsv, channels_yuv;
+
+    src = frame.clone();
 
     ///преобразуем в оттенки серого
     cvtColor(frame, hsv, CV_RGB2HSV);
@@ -127,11 +132,13 @@ void preprocessImage(Mat &frame) {
     //equalizeHist(frame, frame);
     /// Сглаживание изображения
     GaussianBlur(frame, frame, Size( 5, 5 ), 0, 0);
+    gray_src = frame.clone();
+
     /// Detect edges using canny
     Canny(frame, frame, thresh, thresh*2, 3);
 
     // Show preprocessed image
-    imshow("capture", frame);
+    //imshow("capture", frame);
 }
 
 
@@ -227,46 +234,64 @@ void processShapes() {
         }
     }
 
-    qDebug() << shapes.size() << "\t" << triangles.size() << "\t" << squares.size() << "\t" << hexagons.size() << "\t" << circles.size();
+    qDebug() << shapes.size() << "\t" << triangles.size() << "\t" << squares.size() << "\t" << hexagons.size() << "\t" << circles.size() << "\n";
     shapes.clear();
+
+    int centerCrossingCount = 32000;
+    for(auto item : circles) {
+        int count = Shape::detectCentralShape(gray_src, item.shapeCenter, item.shapeRadius*center_detect_radius, center_detect_threshold);
+
+        if (count < centerCrossingCount/* && item.shapeArea > centerShape.shapeArea*/) {
+            centerShape = item;
+            centerCrossingCount = count;
+        }
+
+    }
+
+//    shapes.push_back(item);
+    if (centerShape.shapeArea > 0) {
+        centerShape.shapeType = SHAPE_CENTER;
+        shapes.push_back(centerShape);
+    }
 
     //Выполняем поиск платформы по наивному алгоритму
 
 
-    for (int circle_item = 0; circle_item < circles.size(); ++circle_item) {
-        for (int square_item = 0; square_item < squares.size(); ++square_item) {
-            double eucliadianDistance = 0;
-            bool centerIsInside = circles[circle_item].centerIsInside(squares[square_item].shapeContour, eucliadianDistance);
-            double area_ratio = squares[square_item].shapeArea / circles[circle_item].shapeArea;
+//    for (int circle_item = 0; circle_item < circles.size(); ++circle_item) {
+//        for (int square_item = 0; square_item < squares.size(); ++square_item) {
+//            double eucliadianDistance = 0;
+//            bool centerIsInside = circles[circle_item].centerIsInside(squares[square_item].shapeContour, eucliadianDistance);
+//            double area_ratio = squares[square_item].shapeArea / circles[circle_item].shapeArea;
 
-            if (centerIsInside && eucliadianDistance < min_eucl_dist && area_ratio > 2.5) {
-                if (squares[square_item].shapeArea > platformShape.shapeArea && circles[circle_item].shapeArea > centerShape.shapeArea) {
-                    platformShape = squares[square_item];
-                    platformShape.shapeType = SHAPE_PLATFORM;
+//            if (centerIsInside && eucliadianDistance < min_eucl_dist && area_ratio > 2.5) {
+//                if (squares[square_item].shapeArea > platformShape.shapeArea && circles[circle_item].shapeArea > centerShape.shapeArea) {
+//                    platformShape = squares[square_item];
+//                    platformShape.shapeType = SHAPE_PLATFORM;
 
-                    centerShape = circles[circle_item];
-                    centerShape.shapeType = SHAPE_CENTER;
-                }
-            }
-        }
-    }
+//                    centerShape = circles[circle_item];
+//                    centerShape.shapeType = SHAPE_CENTER;
+//                }
+//            }
+//        }
+//    }
 
-    //Добавляем найденные центр и платформу в массив фигур
-    if (platformShape.shapeArea > 0 && centerShape.shapeArea > 0) {
-        shapes.push_back(platformShape);
-        shapes.push_back(centerShape);
+//    //Добавляем найденные центр и платформу в массив фигур
+//    if (platformShape.shapeArea > 0 && centerShape.shapeArea > 0) {
+//        shapes.push_back(platformShape);
+//        shapes.push_back(centerShape);
 
-        pushShape_1(triangles);
-        pushShape_1(squares);
-        pushShape_1(hexagons);
-        pushShape_1(circles);
-    }
+//        pushShape_1(triangles);
+//        pushShape_1(squares);
+//        pushShape_1(hexagons);
+//        pushShape_1(circles);
+//    }
 
 }
 
 void drawContours() {
     ///Draw shapes
     Mat drawing = src.clone();
+    //Mat drawing = gray_src.clone();
     vector<vector<Point> > resultContours;
 
     for (int i=0; i<shapes.size(); ++i) {
@@ -282,6 +307,10 @@ void drawContours() {
         minEnclosingCircle(resultContours[i], center, radius );
         circle(drawing, center, 3,  SHAPE_COLORS[shapes[i].shapeType], 2);
 
+
+
+        circle(drawing, shapes[i].shapeCenter, radius*center_detect_radius,  Scalar(0,0,0), 1);
+        //circle(drawing, shapes[i].shapeCenter, radius*center_detect_radius_2,  Scalar(0,0,0), 1);
 
         //дорисовать минимальный описывающий прямоугольник и окружности
 //        Scalar color = Scalar(255, 255, 255);

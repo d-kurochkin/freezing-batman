@@ -5,6 +5,7 @@
 #include <QHash>
 #include <QVariant>
 #include <QString>
+#include <QtMath>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -27,7 +28,7 @@ const cv::Scalar SHAPE_COLORS[7] = {
     cv::Scalar(28, 247, 255),
     cv::Scalar(212, 96, 0),
     cv::Scalar(28, 0, 255),
-    cv::Scalar(255, 255, 255),
+    cv::Scalar(122, 12, 232),
     cv::Scalar(255, 255, 255)
 };
 
@@ -40,6 +41,7 @@ class Shape
         std::vector<cv::Point> shapeContour;
         cv::Point2f shapeCenter;
         float shapeArea = 0;
+        float shapeRadius = 0;
         int shapeChildrenCount = 0;
         int shapeType = SHAPE_NONE;
 
@@ -52,6 +54,7 @@ class Shape
     public:
         static void calculateFeatures(std::vector<cv::Point> &contour, QHash<QString, QVariant> &features);
         static int classifyShape(std::vector<cv::Point> &contour);
+        static int detectCentralShape(cv::Mat &image, cv::Point2f center, double radius, int threshold);
 
 };
 

@@ -18,6 +18,7 @@ Shape::Shape(std::vector<cv::Point> &contour)
 
     shapeArea = cv::contourArea(shapeContour);
     shapeType = Shape::classifyShape(shapeContour);
+    shapeRadius = radius;
 
     shapeChildrenCount += 1;
 }
@@ -125,4 +126,24 @@ int Shape::classifyShape(std::vector<cv::Point> &contour)
     }
 
     return shapeType;
+}
+
+int Shape::detectCentralShape(cv::Mat &image, cv::Point2f center, double radius, int threshold)
+{
+    int count = 0;
+
+    for (int i=0; i<360; ++i) {
+        double angle = PI / 180.0 * (double)i;
+        int x = (int)(center.x + radius * qCos(angle));
+        int y = (int)(center.y + radius * qSin(angle));
+
+        if (x >= 0 && y >= 0 && x < image.cols && y < image.rows) {
+            int pixel = image.at<uchar>(y, x);
+
+            if (pixel < threshold) {
+                count += 1;
+            }
+        }
+    }
+    return count;
 }
