@@ -42,7 +42,7 @@ void drawContours();
 
 ///Platform detection methods
 bool simpleDetection();
-bool firstCenterDetection();
+bool centerFirstDetection();
 
 int main()
 {
@@ -194,28 +194,12 @@ void processContours(Mat &frame)
     }
 }
 
-void pushShape_1(vector<Shape> &items) {
-    for(auto item : items) {
-        double eucliadianDistance = 0;
-        bool centerIsInside = platformShape.centerIsInside(item.shapeContour, eucliadianDistance);
-        double area_ratio = centerShape.shapeArea / item.shapeArea;
-
-        if (centerIsInside && eucliadianDistance > min_eucl_dist && area_ratio < 2 && area_ratio > 0.5) {
-            shapes.push_back(item);
-            break;
-        }
-    }
-}
-
 void processShapes() {
     //Очистка
     triangles.clear();
     squares.clear();
     hexagons.clear();
     circles.clear();
-
-
-
 
     //Помещаем фигуры в соответствующие массивы
     for (int i = 0; i < shapes.size(); ++i) {
@@ -242,7 +226,7 @@ void processShapes() {
 
     if (simpleDetection()) {
         qDebug() << "Simple method";
-    } else if (firstCenterDetection()) {
+    } else if (centerFirstDetection()) {
         qDebug() << "Center first method";
     } else {
         qDebug() << "No platform";
@@ -272,7 +256,6 @@ void drawContours() {
 
         //circle(drawing, shapes[i].shapeCenter, radius*2/0.46,  Scalar(0,0,0), 1);
 
-
         //дорисовать минимальный описывающий прямоугольник и окружности
 //        Scalar color = Scalar(255, 255, 255);
 //        RotatedRect minRect = minAreaRect(Mat(resultContours[i]));
@@ -288,6 +271,19 @@ void drawContours() {
 
     /// Show in a window
     imshow( "result", drawing );
+}
+
+void pushShape_1(vector<Shape> &items) {
+    for(Shape item : items) {
+        double eucliadianDistance = 0;
+        bool centerIsInside = platformShape.centerIsInside(item.shapeContour, eucliadianDistance);
+        double area_ratio = centerShape.shapeArea / item.shapeArea;
+
+        if (centerIsInside && eucliadianDistance > min_eucl_dist && area_ratio < 2 && area_ratio > 0.5) {
+            shapes.push_back(item);
+            break;
+        }
+    }
 }
 
 bool simpleDetection() {
@@ -330,25 +326,43 @@ bool simpleDetection() {
     }
 }
 
-bool firstCenterDetection() {
+void pushShape_2(vector<Shape> &items, Shape &center) {
+    for(Shape item : items) {
+        double eucliadianDistance = 0;
+
+        Point diff = item.shapeCenter - center.shapeCenter;
+        eucliadianDistance = sqrt(diff.x*diff.x + diff.y*diff.y);
+
+        qDebug() << eucliadianDistance;
+
+        if (eucliadianDistance <= item.shapeRadius*2/0.46 && eucliadianDistance > 10) {
+            shapes.push_back(item);
+        }
+    }
+}
+
+bool centerFirstDetection() {
     centerShape = Shape();
     platformShape = Shape();
 
     int centerCrossingCount = 32000;
-    for(auto item : circles) {
+    for(Shape item : circles) {
         int count = Shape::detectCentralShape(gray_src, item.shapeCenter, item.shapeRadius*center_detect_radius, center_detect_threshold);
 
         if (count < centerCrossingCount && item.shapeArea > centerShape.shapeArea) {
             centerShape = item;
             centerCrossingCount = count;
         }
-
     }
 
-//    shapes.push_back(item);
     if (centerShape.shapeArea > 0) {
         centerShape.shapeType = SHAPE_CENTER;
         shapes.push_back(centerShape);
+
+        pushShape_2(triangles, centerShape);
+        pushShape_2(squares, centerShape);
+        pushShape_2(hexagons, centerShape);
+        pushShape_2(circles, centerShape);
 
         return true;
     } else {
