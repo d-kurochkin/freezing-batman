@@ -28,7 +28,7 @@ const cv::Scalar SHAPE_COLORS[7] = {
     cv::Scalar(28, 247, 255),
     cv::Scalar(212, 96, 0),
     cv::Scalar(28, 0, 255),
-    cv::Scalar(122, 12, 232),
+    cv::Scalar(255, 222, 63),
     cv::Scalar(255, 255, 255)
 };
 
