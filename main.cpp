@@ -38,7 +38,7 @@ void initInterface();
 void preprocessImage(Mat &frame);
 void processContours(Mat &frame);
 void processShapes();
-void drawContours();
+void drawShapes();
 
 ///Platform detection methods
 bool simpleDetection();
@@ -49,9 +49,9 @@ int main()
     CvCapture* capture = cvCreateCameraCapture(0); //cvCaptureFromCAM( 0 );
     assert(capture);
 
-    /// Logitech Quickcam Sphere AF
-//    cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 1280 );
-//    cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 960 );
+    // Logitech Quickcam Sphere AF
+    // cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 1280 );
+    // cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 960 );
 
     // узнаем ширину и высоту кадра
     double width = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH);
@@ -68,12 +68,10 @@ int main()
         ///начало отсчета времени
         double t = (double)getTickCount();
 
-
-
         preprocessImage(frame);
         processContours(frame);
         processShapes();
-        drawContours();
+        drawShapes();
 
         /// Calculate time
         t = ((double)getTickCount() - t)/getTickFrequency();
@@ -86,7 +84,6 @@ int main()
             break;
         }
         else if(c == 13) { // Enter
-            /*@todo Добавить сохранение развернутых файлов (оригинал, обработанное, результат контурного анализа)*/
             // сохраняем кадр в файл
             sprintf(filename, "Image%d.jpg", counter);
             qDebug("[i] capture... %s\n", filename);
@@ -103,7 +100,7 @@ int main()
 void initInterface() {
     cvNamedWindow("settings", CV_WINDOW_NORMAL);
     cvNamedWindow("result", CV_WINDOW_AUTOSIZE);
-    //resizeWindow("capture", 1024, 768);
+    //resizeWindow("settings", 1024, 768);
     //resizeWindow("result", 1024, 768);
 
     createTrackbar("THR:", "settings", &thresh, 255);
@@ -118,7 +115,6 @@ void preprocessImage(Mat &frame) {
 
     Mat hsv, yuv;
     vector<Mat> channels_hsv, channels_yuv;
-
     src = frame.clone();
 
     ///преобразуем в оттенки серого
@@ -130,19 +126,14 @@ void preprocessImage(Mat &frame) {
     Mat temp;
     addWeighted(channels_hsv[1], 0.5, channels_hsv[2], 0.5, 0, temp);
     multiply(temp, channels_yuv[0], frame, 1.0/color_coeff);
-    //imshow("convert_color", frame);
 
-    /// Выравнивание гистограммы
     //equalizeHist(frame, frame);
-    /// Сглаживание изображения
+
     GaussianBlur(frame, frame, Size( 5, 5 ), 0, 0);
     gray_src = frame.clone();
 
     /// Detect edges using canny
     Canny(frame, frame, thresh, thresh*2, 3);
-
-    // Show preprocessed image
-    //imshow("capture", frame);
 }
 
 
@@ -221,7 +212,6 @@ void processShapes() {
         }
     }
 
-    //qDebug() << shapes.size() << "\t" << triangles.size() << "\t" << squares.size() << "\t" << hexagons.size() << "\t" << circles.size();
     shapes.clear();
 
     if (simpleDetection()) {
@@ -233,40 +223,22 @@ void processShapes() {
     }
 }
 
-void drawContours() {
+void drawShapes() {
     ///Draw shapes
     Mat drawing = src.clone();
-    //Mat drawing = gray_src.clone();
     vector<vector<Point> > resultContours;
 
     for (int i=0; i<shapes.size(); ++i) {
         resultContours.push_back(shapes[i].shapeContour);
 
         /// Draw contour
+        drawContours(drawing, resultContours, i,  SHAPE_COLORS[shapes[i].shapeType], 2, 8, NULL, 0, Point() );
 
-        drawContours( drawing, resultContours, i,  SHAPE_COLORS[shapes[i].shapeType], 2, 8, NULL, 0, Point() );
-
-        /// Draw center of contour
+        /// Draw center of shape
         Point2f center;
         float radius;
         minEnclosingCircle(resultContours[i], center, radius );
         circle(drawing, center, 3,  SHAPE_COLORS[shapes[i].shapeType], 2);
-
-
-
-        //circle(drawing, shapes[i].shapeCenter, radius*2/0.46,  Scalar(0,0,0), 1);
-
-        //дорисовать минимальный описывающий прямоугольник и окружности
-//        Scalar color = Scalar(255, 255, 255);
-//        RotatedRect minRect = minAreaRect(Mat(resultContours[i]));
-//        Point2f rect_points[4]; minRect.points( rect_points );
-
-
-//        Size2f size =minRect.size;
-//        float max = size.height > size.width ? size.height : size.width;
-
-//        radius = max / 0.46;
-//        circle(drawing, shapes[i].shapeCenter, radius, color, 2, 8 );
     }
 
     /// Show in a window
@@ -289,8 +261,6 @@ void pushShape_1(vector<Shape> &items) {
 bool simpleDetection() {
     centerShape = Shape();
     platformShape = Shape();
-    //Выполняем поиск платформы по наивному алгоритму
-
 
     for (int circle_item = 0; circle_item < circles.size(); ++circle_item) {
         for (int square_item = 0; square_item < squares.size(); ++square_item) {
@@ -335,7 +305,7 @@ void pushShape_2(vector<Shape> &items, Shape &center) {
 
         qDebug() << eucliadianDistance;
 
-        if (eucliadianDistance <= item.shapeRadius*2/0.46 && eucliadianDistance > 10) {
+        if (eucliadianDistance <= item.shapeRadius*4.347 && eucliadianDistance > 10) {
             shapes.push_back(item);
         }
     }
