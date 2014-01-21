@@ -241,6 +241,18 @@ void drawShapes() {
         circle(drawing, center, 3,  SHAPE_COLORS[shapes[i].shapeType], 2);
     }
 
+    if (centerShape.shapeArea > 0) {
+        QString text;
+
+        putText(drawing, "Center of platform", Point(1, 10), FONT_HERSHEY_PLAIN, 1, Scalar(28, 232, 0), 1,8);
+
+        text = QString("x = %1").arg((int) centerShape.shapeCenter.x);
+        putText(drawing, text.toStdString(), Point(1, 25), FONT_HERSHEY_PLAIN, 1, Scalar(28, 232, 0), 1, 8);
+
+        text = QString("y = %1").arg((int) centerShape.shapeCenter.y);
+        putText(drawing, text.toStdString(), Point(1, 40), FONT_HERSHEY_PLAIN, 1, Scalar(28, 232, 0), 1, 8);
+    }
+
     /// Show in a window
     imshow( "result", drawing );
 }
@@ -302,8 +314,6 @@ void pushShape_2(vector<Shape> &items, Shape &center) {
 
         Point diff = item.shapeCenter - center.shapeCenter;
         eucliadianDistance = sqrt(diff.x*diff.x + diff.y*diff.y);
-
-        qDebug() << eucliadianDistance;
 
         if (eucliadianDistance <= item.shapeRadius*4.347 && eucliadianDistance > 10) {
             shapes.push_back(item);
