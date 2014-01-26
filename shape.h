@@ -7,6 +7,7 @@
 #include <QString>
 #include <QtMath>
 
+
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
@@ -34,6 +35,23 @@ const cv::Scalar SHAPE_COLORS[7] = {
 
 const int MINIMAL_AREA = 200;
 const double PI = 3.141592653589793238462;
+
+
+/// Порядок следования признаков: Roundness, Rectangularity, Triangularity, Количество углов
+const double prototypesFeatures[4][4] = {
+    {0.56,  0.51,    1,     0.375},
+    {0.79,  1,      0.75,   0.5},
+    {0.83,  0.75,   0.69,   0.75},
+    {0.9,   0.77,   0.68,   1},
+};
+
+
+const double prototypesFactors[4][4] = {
+    {1,     1,      1.5,    0.8},
+    {1,     1.5,    1,      1},
+    {1,     1,      1,      1},
+    {1.5,   1,      1,      1},
+};
 
 class Shape
 {

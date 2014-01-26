@@ -1,14 +1,5 @@
 #include "shape.h"
 
-//double angle_point (point a, point b, point c)
-//{
-//   double x1 = a.x - b.x, x2 = c.x - b.x;
-//   double y1 = a.y - b.y, y2 = c.y - b.y;
-//   double d1 = sqrt (x1 * x1 + y1 * y1);
-//   double d2 = sqrt (x2 * x2 + y2 * y2);
-//   return acos ((x1 * x2 + y1 * y2) / (d1 * d2));
-//}
-
 Shape::Shape(std::vector<cv::Point> &contour)
 {
     shapeContour = contour;
@@ -67,6 +58,27 @@ void Shape::calculateFeatures(std::vector<cv::Point> &contour, QHash<QString, QV
     std::vector<cv::Point> approx;
     cv::approxPolyDP(contour, approx, epsilon, true);
 
+
+    double min_wtf = perimeter / 15;
+    for (int item = 0; item < approx.size(); ++item) {
+
+        int next;
+        if(item < approx.size()-1) {
+            next = item + 1;
+        } else {
+            next = 0;
+        }
+
+        cv::Point diff = approx[item] - approx[next];
+        double eucliadianDistance = cv::sqrt(diff.x*diff.x + diff.y*diff.y);
+
+        if(eucliadianDistance < min_wtf) {
+            approx.erase(approx.begin()+item);
+        }
+
+    }
+
+
     bool isClosed = cv::isContourConvex(approx);
 
     /// Calculate basic features
@@ -74,10 +86,10 @@ void Shape::calculateFeatures(std::vector<cv::Point> &contour, QHash<QString, QV
     double sides = (double)approx.size();
 
     /// Calculate moments of contour
-    cv::Moments curMnts = moments( contour, false );
+    cv::Moments curMnts = moments(approx, false );
 
-    cv::Rect mbr = cv::boundingRect(contour);
-    double mbrArea = mbr.area();
+    cv::RotatedRect mbr = cv::minAreaRect(approx);
+    double mbrArea = mbr.size.area();
     double roundness = 4*PI*area/(perimeter*perimeter);
     double rectangularity = area/mbrArea;
     double eccentricity = (pow((curMnts.mu20 - curMnts.mu02),2)-4*curMnts.mu11*curMnts.mu11)/pow((curMnts.mu20 + curMnts.mu02), 2);
@@ -102,25 +114,40 @@ void Shape::calculateFeatures(std::vector<cv::Point> &contour, QHash<QString, QV
 
 
 
-int Shape::classifyShape(std::vector<cv::Point> &contour)
+int Shape:: classifyShape(std::vector<cv::Point> &contour)
 {
     QHash<QString, QVariant> features;
     calculateFeatures(contour, features);
 
+    const double featuresValues[4] = {
+        features["roundness"].toDouble(),
+        features["rectangularity"].toDouble(),
+        features["triangularity"].toDouble(),
+        features["sides"].toDouble()/8.0,
+    };
+
+    double resultDistance[4] = {0};
+
     /// Classify shape
     int shapeType = SHAPE_NONE;
     if (features["area"] > MINIMAL_AREA && features["isClosed"].toBool() && features["eccentricity"] < 0.03) {
-        if (features["triangularity"] > 0.85 && (features["sides"] >= 3 && features["sides"] <= 6)) {
-            shapeType = SHAPE_TRIANGLE;
+        for (int shape_index=0; shape_index<4; ++shape_index) {
+            for (int feature_index=0; feature_index<4; ++feature_index) {
+                resultDistance[shape_index] += qAbs(featuresValues[feature_index] - prototypesFeatures[shape_index][feature_index]);
+            }
+        }
+        double minValue = 10;
+        double minIndex = 0;
+        for(int i=0; i<4; ++i) {
+            if (resultDistance[i] < minValue) {
+                minValue = resultDistance[i];
+                minIndex = i;
+            }
+        }
+        shapeType = SHAPE_NONE + minIndex + 1;
 
-        } else if (/*(rectangularity > 0.8) &&*/ (features["sides"] == 4 || features["sides"] == 5) && (features["triangularity"] < 0.85)) {
-            shapeType = SHAPE_SQUARE;
-
-        } else if (features["sides"] == 6|| features["sides"] == 7) {
-            shapeType = SHAPE_HEXAGON;
-
-        } else if (features["roundness"] > 0.8 && features["sides"] == 8 )
-            shapeType = SHAPE_CIRCLE;
+    } else {
+        shapeType = SHAPE_NONE;
     }
 
     return shapeType;

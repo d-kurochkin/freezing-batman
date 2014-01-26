@@ -3,7 +3,7 @@
 # Project created by QtCreator 2014-01-06T01:23:26
 #
 #-------------------------------------------------
-CONFIG += c++11
+
 
 QT       += core
 
@@ -22,6 +22,8 @@ SOURCES += main.cpp \
 HEADERS += \
     shape.h
 
+
+CONFIG += c++11
 
 # add opencv
 INCLUDEPATH += C:\Development\opencv\include

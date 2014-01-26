@@ -22,6 +22,10 @@ vector<Shape> circles;
 /// Распознанные фигуры
 Shape platformShape;
 Shape centerShape;
+Shape triangleShape;
+Shape squareShape;
+Shape hexagonShape;
+Shape circleShape;
 
 /// Параметры препроцессинга
 int thresh = 50;
@@ -152,7 +156,7 @@ void processContours(Mat &frame)
     vector<Vec4i> hierarchy;
 
     /// Find contours
-    findContours(frame, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+    findContours(frame, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
 
     /// Очищаем вектор с формами
     shapes.clear();
@@ -184,6 +188,7 @@ void processContours(Mat &frame)
                         break;
                     }
                 }
+
 
                 if (!isAdded) {
                     Shape temp(contours[i]);
