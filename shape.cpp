@@ -89,8 +89,6 @@ void Shape::calculateFeatures(std::vector<cv::Point> &contour, QHash<QString, QV
         triangularity = 1/(108*affineMomentInvariant);
       }
 
-
-
     features.clear();
     features.insert("perimeter", perimeter);
     features.insert("area", area);
@@ -130,6 +128,9 @@ int Shape::classifyShape(std::vector<cv::Point> &contour)
 
 int Shape::detectCentralShape(cv::Mat &image, cv::Point2f center, double radius, int threshold)
 {
+    extern cv::Mat src;
+    circle(src, center, radius,  cv::Scalar(0, 0, 0), 1);
+
     int count = 0;
 
     for (int i=0; i<360; ++i) {
@@ -141,6 +142,7 @@ int Shape::detectCentralShape(cv::Mat &image, cv::Point2f center, double radius,
             int pixel = image.at<uchar>(y, x);
 
             if (pixel < threshold) {
+                circle(src, cv::Point(x,y), 1,  cv::Scalar(0, 65, 255), 2);
                 count += 1;
             }
         }

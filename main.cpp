@@ -9,8 +9,8 @@
 using namespace cv;
 using namespace std;
 
-//захватываемый кадр
-Mat frame, gray_src, src;
+/// захватываемый кадр
+Mat frame, gray_src, src, drawing;
 
 /// Массив с фигурами
 vector<Shape> shapes;
@@ -19,7 +19,7 @@ vector<Shape> squares;
 vector<Shape> hexagons;
 vector<Shape> circles;
 
-// Распознанные фигуры
+/// Распознанные фигуры
 Shape platformShape;
 Shape centerShape;
 
@@ -29,6 +29,7 @@ int color_coeff = 70;
 int min_eucl_dist = 50;
 int center_detect_threshold = 100;
 double center_detect_radius = 1.3;
+int raduis_coef = 375;
 
 /// Переменные для сохранения файлов
 int counter=0;
@@ -44,19 +45,21 @@ void drawShapes();
 bool simpleDetection();
 bool centerFirstDetection();
 
+
+//Detect altitude
+double frameHeight;
+double frameWidth;
+float calculateAltitude();
+
 int main()
 {
     CvCapture* capture = cvCreateCameraCapture(0); //cvCaptureFromCAM( 0 );
     assert(capture);
 
-    // Logitech Quickcam Sphere AF
-    // cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 1280 );
-    // cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 960 );
-
     // узнаем ширину и высоту кадра
-    double width = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH);
-    double height = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT);
-    qDebug("[i] %.0f x %.0f\n", width, height);
+    frameWidth = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH);
+    frameHeight = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT);
+    qDebug("[i] %.0f x %.0f\n", frameWidth, frameHeight);
 
     initInterface();
 
@@ -66,16 +69,18 @@ int main()
         frame = cvQueryFrame(capture);
 
         ///начало отсчета времени
-        double t = (double)getTickCount();
+        //double t = (double)getTickCount();
 
         preprocessImage(frame);
         processContours(frame);
         processShapes();
         drawShapes();
 
+
+
         /// Calculate time
-        t = ((double)getTickCount() - t)/getTickFrequency();
-        qDebug() << "Times passed in seconds: " << t;
+        //t = ((double)getTickCount() - t)/getTickFrequency();
+        //qDebug() << "Times passed in seconds: " << t;
 
         // ожидаем нажатия клавиш
         char c = waitKey(33);
@@ -87,7 +92,7 @@ int main()
             // сохраняем кадр в файл
             sprintf(filename, "Image%d.jpg", counter);
             qDebug("[i] capture... %s\n", filename);
-            imwrite(filename, frame);
+            imwrite(filename, src);
             counter++;
         }
     }
@@ -107,8 +112,9 @@ void initInterface() {
     createTrackbar("CCOEF", "settings", &color_coeff, 255);
     createTrackbar("MED", "settings", &min_eucl_dist, 150);
     createTrackbar("CDT", "settings", &center_detect_threshold, 150);
-    waitKey(1000);
+    createTrackbar("RCOEF", "settings", &raduis_coef, 1000);
 
+    waitKey(1000);
 }
 
 void preprocessImage(Mat &frame) {
@@ -116,6 +122,7 @@ void preprocessImage(Mat &frame) {
     Mat hsv, yuv;
     vector<Mat> channels_hsv, channels_yuv;
     src = frame.clone();
+    drawing = src.clone();
 
     ///преобразуем в оттенки серого
     cvtColor(frame, hsv, CV_RGB2HSV);
@@ -127,6 +134,7 @@ void preprocessImage(Mat &frame) {
     addWeighted(channels_hsv[1], 0.5, channels_hsv[2], 0.5, 0, temp);
     multiply(temp, channels_yuv[0], frame, 1.0/color_coeff);
 
+    imshow("grayscale", frame);
     //equalizeHist(frame, frame);
 
     GaussianBlur(frame, frame, Size( 5, 5 ), 0, 0);
@@ -134,6 +142,7 @@ void preprocessImage(Mat &frame) {
 
     /// Detect edges using canny
     Canny(frame, frame, thresh, thresh*2, 3);
+    imshow("Canny", frame);
 }
 
 
@@ -186,13 +195,13 @@ void processContours(Mat &frame)
 }
 
 void processShapes() {
-    //Очистка
+    /// Clear formes arraysS
     triangles.clear();
     squares.clear();
     hexagons.clear();
     circles.clear();
 
-    //Помещаем фигуры в соответствующие массивы
+    /// Put shapes into formes arrays
     for (int i = 0; i < shapes.size(); ++i) {
         switch (shapes[i].shapeType) {
         case SHAPE_TRIANGLE:
@@ -212,8 +221,10 @@ void processShapes() {
         }
     }
 
+    /// Clear shapes base arrays
     shapes.clear();
 
+    /// Detect platform with simple method
     if (simpleDetection()) {
         qDebug() << "Simple method";
     } else if (centerFirstDetection()) {
@@ -221,11 +232,12 @@ void processShapes() {
     } else {
         qDebug() << "No platform";
     }
+
+    calculateAltitude();
 }
 
 void drawShapes() {
     ///Draw shapes
-    Mat drawing = src.clone();
     vector<vector<Point> > resultContours;
 
     for (int i=0; i<shapes.size(); ++i) {
@@ -315,7 +327,7 @@ void pushShape_2(vector<Shape> &items, Shape &center) {
         Point diff = item.shapeCenter - center.shapeCenter;
         eucliadianDistance = sqrt(diff.x*diff.x + diff.y*diff.y);
 
-        if (eucliadianDistance <= item.shapeRadius*4.347 && eucliadianDistance > 10) {
+        if (eucliadianDistance <= center.shapeRadius*raduis_coef/100.0 && eucliadianDistance > 10) {
             shapes.push_back(item);
         }
     }
@@ -329,7 +341,7 @@ bool centerFirstDetection() {
     for(Shape item : circles) {
         int count = Shape::detectCentralShape(gray_src, item.shapeCenter, item.shapeRadius*center_detect_radius, center_detect_threshold);
 
-        if (count < centerCrossingCount && item.shapeArea > centerShape.shapeArea) {
+        if (count < centerCrossingCount /*&& item.shapeArea > centerShape.shapeArea*/) {
             centerShape = item;
             centerCrossingCount = count;
         }
@@ -338,6 +350,9 @@ bool centerFirstDetection() {
     if (centerShape.shapeArea > 0) {
         centerShape.shapeType = SHAPE_CENTER;
         shapes.push_back(centerShape);
+
+        double radius = centerShape.shapeRadius*raduis_coef/100.0;
+        circle(src, centerShape.shapeCenter, radius,  cv::Scalar(96, 115, 27), 1);
 
         pushShape_2(triangles, centerShape);
         pushShape_2(squares, centerShape);
@@ -348,4 +363,20 @@ bool centerFirstDetection() {
     } else {
         return false;
     }
+}
+
+
+float calculateAltitude() {
+    const float coeff = 1;
+    if (centerShape.shapeArea > 0) {
+        double frameFactor = qSqrt(frameHeight*frameWidth);
+        double shapeFactor = qSqrt(centerShape.shapeArea);
+
+        double distance = frameFactor / shapeFactor * coeff;
+
+        QString text = QString("Distance = %1").arg(distance);
+        putText(drawing, text.toStdString(), Point(1, 55), FONT_HERSHEY_PLAIN, 1, Scalar(28, 232, 0), 1, 8);
+    }
+
+    return 0;
 }
