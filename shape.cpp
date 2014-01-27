@@ -1,6 +1,6 @@
 #include "shape.h"
 
-Shape::Shape(std::vector<cv::Point> &contour)
+Shape::Shape(std::vector<cv::Point> &contour, int type)
 {
     shapeContour = contour;
 
@@ -8,7 +8,7 @@ Shape::Shape(std::vector<cv::Point> &contour)
     cv::minEnclosingCircle(shapeContour, shapeCenter, radius);
 
     shapeArea = cv::contourArea(shapeContour);
-    shapeType = Shape::classifyShape(shapeContour);
+    shapeType = type;
     shapeRadius = radius;
 
     shapeChildrenCount += 1;
@@ -114,7 +114,7 @@ void Shape::calculateFeatures(std::vector<cv::Point> &contour, QHash<QString, QV
 
 
 
-int Shape:: classifyShape(std::vector<cv::Point> &contour)
+int Shape::classifyShape(std::vector<cv::Point> &contour, double threshold)
 {
     QHash<QString, QVariant> features;
     calculateFeatures(contour, features);
@@ -144,7 +144,10 @@ int Shape:: classifyShape(std::vector<cv::Point> &contour)
                 minIndex = i;
             }
         }
-        shapeType = SHAPE_NONE + minIndex + 1;
+        if (minValue <= threshold) {
+            //qDebug() << minIndex+1 << " -> " << minValue;
+            shapeType = SHAPE_NONE + minIndex + 1;
+        }
 
     } else {
         shapeType = SHAPE_NONE;

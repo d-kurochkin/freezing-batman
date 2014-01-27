@@ -1,7 +1,7 @@
 #ifndef SHAPE_H
 #define SHAPE_H
 
-#include <QDebug>
+//#include <QDebug>
 #include <QHash>
 #include <QVariant>
 #include <QString>
@@ -65,13 +65,13 @@ class Shape
 
     public:
         Shape(){}
-        Shape(std::vector<cv::Point> &contour);
+        Shape(std::vector<cv::Point> &contour, int type);
         bool centerIsInside(std::vector<cv::Point> &contour, double &eucliadianDistance);
         void mergeContours(std::vector<cv::Point> &contour);
 
     public:
         static void calculateFeatures(std::vector<cv::Point> &contour, QHash<QString, QVariant> &features);
-        static int classifyShape(std::vector<cv::Point> &contour);
+        static int classifyShape(std::vector<cv::Point> &contour, double threshold);
         static int detectCentralShape(cv::Mat &image, cv::Point2f center, double radius, int threshold);
 
 };

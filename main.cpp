@@ -1,5 +1,3 @@
-#include <QDebug>
-
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -34,6 +32,8 @@ int min_eucl_dist = 50;
 int center_detect_threshold = 100;
 double center_detect_radius = 1.3;
 int raduis_coef = 375;
+int class_threshold = 80;
+
 
 /// Переменные для сохранения файлов
 int counter=0;
@@ -60,12 +60,20 @@ int main()
     CvCapture* capture = cvCreateCameraCapture(0); //cvCaptureFromCAM( 0 );
     assert(capture);
 
+    cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 720);
+    cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 480);
+    cvSetCaptureProperty(capture, CV_CAP_PROP_FPS, 30);
+
     // узнаем ширину и высоту кадра
     frameWidth = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH);
     frameHeight = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT);
-    qDebug("[i] %.0f x %.0f\n", frameWidth, frameHeight);
+    //qDebug("[i] %.0f x %.0f\n", frameWidth, frameHeight);
+
+
 
     initInterface();
+    waitKey(1000);
+
 
     /// Основной цикл программы
     while(true){
@@ -95,8 +103,8 @@ int main()
         else if(c == 13) { // Enter
             // сохраняем кадр в файл
             sprintf(filename, "Image%d.jpg", counter);
-            qDebug("[i] capture... %s\n", filename);
-            imwrite(filename, src);
+            //qDebug("[i] capture... %s\n", filename);
+            imwrite(filename, drawing);
             counter++;
         }
     }
@@ -117,6 +125,8 @@ void initInterface() {
     createTrackbar("MED", "settings", &min_eucl_dist, 150);
     createTrackbar("CDT", "settings", &center_detect_threshold, 150);
     createTrackbar("RCOEF", "settings", &raduis_coef, 1000);
+    createTrackbar("CLSTHR", "settings", &class_threshold, 150);
+    //createTrackbar("DCOEF/10", "settings", &distance_coeff, 500);
 
     waitKey(1000);
 }
@@ -166,13 +176,13 @@ void processContours(Mat &frame)
     {
         /// Approximate contour to find border count
         int shapeType = SHAPE_NONE;
-        shapeType = Shape::classifyShape(contours[i]);
+        shapeType = Shape::classifyShape(contours[i], (double)(class_threshold/100.0));
 
 
         if (shapeType != SHAPE_NONE) {
 
             if (shapes.size() == 0) {
-                Shape temp(contours[i]);
+                Shape temp(contours[i], shapeType);
                 shapes.push_back(temp);
             } else {
                 bool isAdded = false;
@@ -191,7 +201,7 @@ void processContours(Mat &frame)
 
 
                 if (!isAdded) {
-                    Shape temp(contours[i]);
+                    Shape temp(contours[i], shapeType);
                     shapes.push_back(temp);
                 }
             }
@@ -231,11 +241,11 @@ void processShapes() {
 
     /// Detect platform with simple method
     if (simpleDetection()) {
-        qDebug() << "Simple method";
+        //qDebug() << "Simple method";
     } else if (centerFirstDetection()) {
-        qDebug() << "Center first method";
+        //qDebug() << "Center first method";
     } else {
-        qDebug() << "No platform";
+        //qDebug() << "No platform";
     }
 
     calculateAltitude();
@@ -372,15 +382,21 @@ bool centerFirstDetection() {
 
 
 float calculateAltitude() {
-    const float coeff = 1;
+    float distance_coeff = 35.181;
+
     if (centerShape.shapeArea > 0) {
         double frameFactor = qSqrt(frameHeight*frameWidth);
         double shapeFactor = qSqrt(centerShape.shapeArea);
 
-        double distance = frameFactor / shapeFactor * coeff;
+        double x = frameFactor / shapeFactor;
+        double distance = 0.0064*x*x + 38.112*x + 5;
+        //double distance = x;
 
         QString text = QString("Distance = %1").arg(distance);
         putText(drawing, text.toStdString(), Point(1, 55), FONT_HERSHEY_PLAIN, 1, Scalar(28, 232, 0), 1, 8);
+
+        text = QString("Relative distance = %1").arg(x);
+        putText(drawing, text.toStdString(), Point(1, 70), FONT_HERSHEY_PLAIN, 1, Scalar(28, 232, 0), 1, 8);
     }
 
     return 0;
