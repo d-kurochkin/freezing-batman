@@ -54,15 +54,17 @@ bool centerFirstDetection();
 double frameHeight;
 double frameWidth;
 float calculateAltitude();
+void calculateOffset();
 
 int main()
 {
     CvCapture* capture = cvCreateCameraCapture(0); //cvCaptureFromCAM( 0 );
     assert(capture);
 
-    cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 720);
-    cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 480);
-    cvSetCaptureProperty(capture, CV_CAP_PROP_FPS, 30);
+    /// Параметры необходимые для платы видеозахвата
+    //cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH, 720);
+    //cvSetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT, 480);
+    //cvSetCaptureProperty(capture, CV_CAP_PROP_FPS, 30);
 
     // узнаем ширину и высоту кадра
     frameWidth = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH);
@@ -249,6 +251,7 @@ void processShapes() {
     }
 
     calculateAltitude();
+    calculateOffset();
 }
 
 void drawShapes() {
@@ -382,8 +385,6 @@ bool centerFirstDetection() {
 
 
 float calculateAltitude() {
-    float distance_coeff = 35.181;
-
     if (centerShape.shapeArea > 0) {
         double frameFactor = qSqrt(frameHeight*frameWidth);
         double shapeFactor = qSqrt(centerShape.shapeArea);
@@ -401,3 +402,16 @@ float calculateAltitude() {
 
     return 0;
 }
+
+
+void calculateOffset() {
+    if (centerShape.shapeArea > 0) {
+        double x = (1 - (2 * centerShape.shapeCenter.x / frameWidth))*100;
+        double y = (1 - (2 * centerShape.shapeCenter.y / frameHeight))*100;
+
+        QString text = QString("X offset = %1 Y offset = %2").arg(QString::number(x), QString::number(y));
+        putText(drawing, text.toStdString(), Point(1, 85), FONT_HERSHEY_PLAIN, 1, Scalar(28, 232, 0), 1, 8);
+    }
+
+}
+
