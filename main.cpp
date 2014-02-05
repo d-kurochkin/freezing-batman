@@ -43,6 +43,7 @@ void initInterface();
 void preprocessImage(Mat &frame);
 void processContours(Mat &frame);
 void processShapes();
+void processEdgeShapes();
 void drawShapes();
 
 ///Platform detection methods
@@ -55,6 +56,7 @@ double frameHeight;
 double frameWidth;
 float calculateAltitude();
 void calculateOffset();
+void calculateAngle();
 
 int main()
 {
@@ -70,7 +72,6 @@ int main()
     frameWidth = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH);
     frameHeight = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT);
     //qDebug("[i] %.0f x %.0f\n", frameWidth, frameHeight);
-
 
 
     initInterface();
@@ -250,11 +251,33 @@ void processShapes() {
         //qDebug() << "No platform";
     }
 
+    processEdgeShapes();
+
     calculateAltitude();
     calculateOffset();
 }
 
 void drawShapes() {
+    shapes.clear();
+    if (centerShape.shapeArea > 0) {
+        shapes.push_back(centerShape);
+
+        if (triangleShape.shapeArea > 0)
+            shapes.push_back(triangleShape);
+
+        if (squareShape.shapeArea > 0)
+            shapes.push_back(squareShape);
+
+        if (hexagonShape.shapeArea > 0)
+            shapes.push_back(hexagonShape);
+
+        if (circleShape.shapeArea > 0)
+            shapes.push_back(circleShape);
+
+        if (platformShape.shapeArea > 0)
+            shapes.push_back(platformShape);
+    }
+
     ///Draw shapes
     vector<vector<Point> > resultContours;
 
@@ -303,6 +326,10 @@ void pushShape_1(vector<Shape> &items) {
 bool simpleDetection() {
     centerShape = Shape();
     platformShape = Shape();
+    triangleShape = Shape();
+    squareShape = Shape();
+    hexagonShape = Shape();
+    circleShape = Shape();
 
     for (int circle_item = 0; circle_item < circles.size(); ++circle_item) {
         for (int square_item = 0; square_item < squares.size(); ++square_item) {
@@ -383,6 +410,37 @@ bool centerFirstDetection() {
     }
 }
 
+void processEdgeShapes() {
+    for(Shape item : shapes) {
+        switch (item.shapeType) {
+        case SHAPE_TRIANGLE:
+            if (item.shapeArea > triangleShape.shapeArea) {
+                triangleShape = item;
+            }
+            break;
+        case SHAPE_SQUARE:
+            if (item.shapeArea > squareShape.shapeArea) {
+                squareShape = item;
+            }
+            break;
+        case SHAPE_HEXAGON:
+            if (item.shapeArea > hexagonShape.shapeArea) {
+                hexagonShape = item;
+            }
+            break;
+        case SHAPE_CIRCLE:
+            double eucliadianDistance = 0;
+            bool is_inside = false;
+            if (hexagonShape.shapeArea > 0) {
+                is_inside = hexagonShape.centerIsInside(item.shapeContour, eucliadianDistance);
+            }
+            if (item.shapeArea > circleShape.shapeArea && !is_inside) {
+                circleShape = item;
+            }
+            break;
+        }
+    }
+}
 
 float calculateAltitude() {
     if (centerShape.shapeArea > 0) {
@@ -412,6 +470,7 @@ void calculateOffset() {
         QString text = QString("X offset = %1 Y offset = %2").arg(QString::number(x), QString::number(y));
         putText(drawing, text.toStdString(), Point(1, 85), FONT_HERSHEY_PLAIN, 1, Scalar(28, 232, 0), 1, 8);
     }
-
 }
+
+
 
