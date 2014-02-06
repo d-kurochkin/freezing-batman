@@ -512,37 +512,50 @@ double calculateAngle(Shape &item) {
 void calculatePlatformAngle() {
     if (centerShape.shapeArea > 0) {
         vector<int> angles;
-        angles.clear();
-
         int angle;
 
-        qDebug() << "==========================================================";
         if (triangleShape.shapeArea > 0) {
             angle =(int)(calculateAngle(triangleShape) + (360 - 219)) % 360;
-            qDebug() << "triangleShape " << angle;
             angles.push_back(angle);
         }
 
         if (squareShape.shapeArea > 0) {
             angle =(int)(calculateAngle(squareShape) + (360 - 45)) % 360;
-            qDebug() << "squareShape " << angle;
             angles.push_back(angle);
         }
 
         if (hexagonShape.shapeArea > 0) {
             angle =(int)(calculateAngle(hexagonShape) + (360 - 315)) % 360;
-            qDebug() << "hexagonShape " << angle;
             angles.push_back(angle);
         }
 
         if (circleShape.shapeArea > 0) {
             angle =(int)(calculateAngle(circleShape) + (360 - 135)) % 360;
-            qDebug() << "circleShape " << angle;
             angles.push_back(angle);
         }
 
         if (angles.size() > 0) {
-            int average = accumulate(angles.begin(), angles.end(), 0) / angles.size();
+
+            int average = 0;
+
+            int min = *min_element(angles.begin(), angles.end());
+            int max = *max_element(angles.begin(), angles.end());
+            if ((max - min) > 300) {
+                for(auto item : angles) {
+                    if ((item + 300) < max) {
+                        average += item + 360;
+                    } else {
+                        average += item;
+                    }
+                }
+                average /= angles.size();
+            } else {
+                average = accumulate(angles.begin(), angles.end(), 0) / angles.size();
+            }
+
+            if(average > 180) {
+                average = -1 * (360 - average);
+            }
 
             QString text = QString("Platform angle = %1").arg(QString::number(average));
             putText(drawing, text.toStdString(), Point(1, 100), FONT_HERSHEY_PLAIN, 1, Scalar(28, 232, 0), 1, 8);
