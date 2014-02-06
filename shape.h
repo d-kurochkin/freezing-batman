@@ -1,7 +1,7 @@
 #ifndef SHAPE_H
 #define SHAPE_H
 
-//#include <QDebug>
+#include <QDebug>
 #include <QHash>
 #include <QVariant>
 #include <QString>

@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -56,7 +58,7 @@ double frameHeight;
 double frameWidth;
 float calculateAltitude();
 void calculateOffset();
-void calculateAngle();
+void calculatePlatformAngle();
 
 int main()
 {
@@ -202,7 +204,6 @@ void processContours(Mat &frame)
                     }
                 }
 
-
                 if (!isAdded) {
                     Shape temp(contours[i], shapeType);
                     shapes.push_back(temp);
@@ -255,6 +256,7 @@ void processShapes() {
 
     calculateAltitude();
     calculateOffset();
+    calculatePlatformAngle();
 }
 
 void drawShapes() {
@@ -411,10 +413,19 @@ bool centerFirstDetection() {
 }
 
 void processEdgeShapes() {
+    double eucliadianDistance = 0;
+    bool is_inside = false;
+
     for(Shape item : shapes) {
         switch (item.shapeType) {
         case SHAPE_TRIANGLE:
-            if (item.shapeArea > triangleShape.shapeArea) {
+
+            if (circleShape.shapeArea > 0) {
+                is_inside = circleShape.centerIsInside(item.shapeContour, eucliadianDistance);
+            } else {
+                is_inside =  false;
+            }
+            if (item.shapeArea > triangleShape.shapeArea && !is_inside) {
                 triangleShape = item;
             }
             break;
@@ -429,10 +440,10 @@ void processEdgeShapes() {
             }
             break;
         case SHAPE_CIRCLE:
-            double eucliadianDistance = 0;
-            bool is_inside = false;
             if (hexagonShape.shapeArea > 0) {
                 is_inside = hexagonShape.centerIsInside(item.shapeContour, eucliadianDistance);
+            } else {
+                is_inside =  false;
             }
             if (item.shapeArea > circleShape.shapeArea && !is_inside) {
                 circleShape = item;
@@ -467,8 +478,76 @@ void calculateOffset() {
         double x = (1 - (2 * centerShape.shapeCenter.x / frameWidth))*100;
         double y = (1 - (2 * centerShape.shapeCenter.y / frameHeight))*100;
 
-        QString text = QString("X offset = %1 Y offset = %2").arg(QString::number(x), QString::number(y));
+        QString text = QString("X offset = %1% Y offset = %2%").arg(QString::number((int)x), QString::number((int)y));
         putText(drawing, text.toStdString(), Point(1, 85), FONT_HERSHEY_PLAIN, 1, Scalar(28, 232, 0), 1, 8);
+    }
+}
+
+
+double calculateAngle(Shape &item) {
+    double x = item.shapeCenter.x - centerShape.shapeCenter.x;
+    double y = item.shapeCenter.y - centerShape.shapeCenter.y;
+    double angle = 0;
+
+
+    if (x == 0) {
+        if (y < 0) {
+            angle = 180;
+        } else {
+            angle = 0;
+        }
+    }
+    else {
+        angle = qAtan(y/x)*180.0/PI;
+        if (x > 0) {
+            angle += 90;
+        } else {
+            angle += 270;
+        }
+
+    }
+    return angle;
+}
+
+void calculatePlatformAngle() {
+    if (centerShape.shapeArea > 0) {
+        vector<int> angles;
+        angles.clear();
+
+        int angle;
+
+        qDebug() << "==========================================================";
+        if (triangleShape.shapeArea > 0) {
+            angle =(int)(calculateAngle(triangleShape) + (360 - 219)) % 360;
+            qDebug() << "triangleShape " << angle;
+            angles.push_back(angle);
+        }
+
+        if (squareShape.shapeArea > 0) {
+            angle =(int)(calculateAngle(squareShape) + (360 - 45)) % 360;
+            qDebug() << "squareShape " << angle;
+            angles.push_back(angle);
+        }
+
+        if (hexagonShape.shapeArea > 0) {
+            angle =(int)(calculateAngle(hexagonShape) + (360 - 315)) % 360;
+            qDebug() << "hexagonShape " << angle;
+            angles.push_back(angle);
+        }
+
+        if (circleShape.shapeArea > 0) {
+            angle =(int)(calculateAngle(circleShape) + (360 - 135)) % 360;
+            qDebug() << "circleShape " << angle;
+            angles.push_back(angle);
+        }
+
+        if (angles.size() > 0) {
+            int average = accumulate(angles.begin(), angles.end(), 0) / angles.size();
+
+            QString text = QString("Platform angle = %1").arg(QString::number(average));
+            putText(drawing, text.toStdString(), Point(1, 100), FONT_HERSHEY_PLAIN, 1, Scalar(28, 232, 0), 1, 8);
+        }
+
     }
 }
 
